@@ -21,18 +21,6 @@ const departments = {
             { key: "sportsCulture", name: "Sports Culture" }
         ]
     },
-
-    obgyn: {
-        title: "Obstetrics & Gynecological Health Department",
-        subjects: [
-            { key: "obstetricNursing", name: "Obstetric Nursing" },
-            { key: "obstetricsGynecology", name: "Obstetrics and Gynecology" },
-            { key: "criticalCareEmergency", name: "Critical Care and Emergency Nursing" },
-            { key: "statistics", name: "Statistics" },
-            { key: "humanBehavior", name: "Human Behavior" },
-            { key: "pediatricEmergencies", name: "Pediatric Emergencies" }
-        ]
-    }
 };
 
 function hideAllScreens() {
