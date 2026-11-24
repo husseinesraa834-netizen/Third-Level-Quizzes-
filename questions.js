@@ -7,10 +7,4 @@ const questionBank = {
     stressAndCoping: { mcq: [], tf: [] },
     sportsCulture: { mcq: [], tf: [] },
 
-    obstetricNursing: { mcq: [], tf: [] },
-    obstetricsGynecology: { mcq: [], tf: [] },
-    criticalCareEmergency: { mcq: [], tf: [] },
-    statistics: { mcq: [], tf: [] },
-    humanBehavior: { mcq: [], tf: [] },
-    pediatricEmergencies: { mcq: [], tf: [] }
 };
