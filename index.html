@@ -1,0 +1,105 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nursing Quiz</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="container">
+
+        <!-- Welcome Screen -->
+        <section id="welcome-screen" class="screen">
+            <h1>NURSING QUIZ</h1>
+            <p>Prepared by/</p>
+            <h3>Ahmed Elshabrawy</h3>
+            <h3>Esraa Hussein</h3>
+            <button onclick="showDepartments()">Start</button>
+        </section>
+
+        <!-- Department Screen -->
+        <section id="department-screen" class="screen hidden">
+            <h2>Select Department</h2>
+
+            <button onclick="showSubjects('pediatric')">
+                Pediatric Department
+            </button>
+
+            <button onclick="showSubjects('obgyn')">
+                Obstetrics & Gynecological Health Department
+            </button>
+
+            <button class="back-btn" onclick="goBack('welcome-screen')">
+                Back
+            </button>
+        </section>
+
+        <!-- Subject Screen -->
+        <section id="subject-screen" class="screen hidden">
+            <h2 id="department-title">Select Subject</h2>
+            <div id="subjects-container"></div>
+
+            <button class="back-btn" onclick="goBack('department-screen')">
+                Back
+            </button>
+        </section>
+
+        <!-- Quiz Mode Screen -->
+        <section id="mode-screen" class="screen hidden">
+            <h2 id="subject-selected-title">Selected Subject</h2>
+            <h3>Select Quiz Mode</h3>
+
+            <button onclick="startQuiz('mcq')">MCQ</button>
+            <button onclick="startQuiz('tf')">True / False</button>
+            <button onclick="startQuiz('all')">All Questions</button>
+
+            <button class="back-btn" onclick="goBack('subject-screen')">
+                Back
+            </button>
+        </section>
+
+        <!-- Quiz Screen -->
+        <section id="quiz-screen" class="screen hidden">
+
+            <div class="quiz-header">
+                <span id="question-counter"></span>
+                <span id="score-display">Score: 0</span>
+            </div>
+
+            <div class="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+
+            <h2 id="question-text"></h2>
+
+            <div id="options-container"></div>
+
+            <div id="feedback"></div>
+
+            <button id="next-btn" onclick="nextQuestion()" disabled>
+                Next
+            </button>
+
+        </section>
+
+        <!-- Result Screen -->
+        <section id="result-screen" class="screen hidden">
+            <h2>Quiz Completed!</h2>
+            <h3 id="final-score"></h3>
+            <p id="result-message"></p>
+
+            <button onclick="restartQuiz()">Try Again</button>
+            <button onclick="goHome()">Home</button>
+        </section>
+
+    </main>
+
+    <script src="questions.js"></script>
+    <script src="script.js"></script>
+
+</body>
+  </html>
+  
