@@ -75,20 +75,27 @@
 
             <div id="feedback"></div>
             
-             <button id="exit-btn" onclick="exitQuiz()">
-              Exit Quiz
-              </button>
-            <button id="previous-btn" onclick="previousQuestion()" disabled>
-            Previous
-            </button>
+             <div style="display: flex; gap: 10px; justify-content: center;">
 
-            <button id="next-btn" onclick="nextQuestion()">
-            Next
-           </button>
+    <button id="next-btn" onclick="nextQuestion()">
+        Next
+    </button>
 
-           <button id="submit-btn" onclick="submitExam()" style="display: none;">
-           Submit Exam
-           </button>
+    <button id="previous-btn" onclick="previousQuestion()" disabled>
+        Previous
+    </button>
+
+    <button id="submit-btn" onclick="submitExam()" style="display: none;">
+        Submit Exam
+    </button>
+
+</div>
+
+<div style="margin-top: 10px;">
+    <button id="exit-btn" onclick="exitQuiz()">
+        Exit Quiz
+    </button>
+</div>
 
         </section>
 
