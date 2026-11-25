@@ -5,7 +5,8 @@ const questionBank = {
     evidenceBasedPractice: { mcq: [], tf: [] },
     pediatricSpecialNeeds: { mcq: [], tf: [] },
     stressAndCoping: { mcq: [], tf: [] },
-    sportsCulture: { mcq: [ {
+    sportsCulture: { mcq: [
+         {
       question: "......... هي الجانب المتكامل من التربية يعمل علي تنميه الفرد وتكيفه عن طريق الانشطه البدنيه",
       options: [
         "ليس كل ما سبق",
@@ -204,6 +205,7 @@ const questionBank = {
         "1914"
       ],
       answer: "1904"
-          }], tf: [] },
+    }
+    ], tf: [] },
 
 };
