@@ -1,13 +1,15 @@
-
 let currentQuestions = [];
 let currentIndex = 0;
 let score = 0;
-let answered = false;
-let selectedAnswerIndex = null;
 
 let selectedDepartment = "";
 let selectedSubject = "";
 let selectedMode = "";
+
+let userAnswers = [];
+let answeredQuestions = [];
+
+let examSubmitted = false;
 
 const SAVE_KEY = "nursingQuizProgress_v2";
 
@@ -23,7 +25,7 @@ const departments = {
             { key: "stressAndCoping", name: "Stress and Coping" },
             { key: "sportsCulture", name: "Sports Culture" }
         ]
-    },
+    }
 };
 
 function saveProgress(screen = "quiz") {
@@ -33,9 +35,10 @@ function saveProgress(screen = "quiz") {
         mode: selectedMode,
         index: currentIndex,
         score: score,
-        answered: answered,
-        selectedAnswerIndex: selectedAnswerIndex,
-        screen: screen
+        userAnswers: userAnswers,
+        answeredQuestions: answeredQuestions,
+        screen: screen,
+        examSubmitted: examSubmitted
     };
 
     try {
@@ -71,18 +74,15 @@ function showSubjects(departmentKey) {
 
     const department = departments[departmentKey];
 
-    document.getElementById("department-title").textContent =
-        department.title;
+    document.getElementById("department-title").textContent = department.title;
 
     const container = document.getElementById("subjects-container");
     container.innerHTML = "";
 
     department.subjects.forEach(subject => {
         const button = document.createElement("button");
-
         button.textContent = subject.name;
         button.onclick = () => selectSubject(subject.key, subject.name);
-
         container.appendChild(button);
     });
 
@@ -92,8 +92,7 @@ function showSubjects(departmentKey) {
 function selectSubject(subjectKey, subjectName) {
     selectedSubject = subjectKey;
 
-    document.getElementById("subject-selected-title").textContent =
-        subjectName;
+    document.getElementById("subject-selected-title").textContent = subjectName;
 
     hideAllScreens();
     document.getElementById("mode-screen").classList.remove("hidden");
@@ -111,20 +110,14 @@ function buildQuestionList() {
     const mcqQuestions = subjectBank.mcq || [];
     const tfQuestions = subjectBank.tf || [];
 
-    if (selectedMode === "mcq") {
-        return [...mcqQuestions];
-    }
-
-    if (selectedMode === "tf") {
-        return [...tfQuestions];
-    }
+    if (selectedMode === "mcq") return [...mcqQuestions];
+    if (selectedMode === "tf") return [...tfQuestions];
 
     return [...mcqQuestions, ...tfQuestions];
 }
 
 function startQuiz(mode) {
     selectedMode = mode;
-
     currentQuestions = buildQuestionList();
 
     if (currentQuestions.length === 0) {
@@ -134,8 +127,11 @@ function startQuiz(mode) {
 
     currentIndex = 0;
     score = 0;
-    answered = false;
-    selectedAnswerIndex = null;
+
+    userAnswers = new Array(currentQuestions.length).fill(null);
+    answeredQuestions = new Array(currentQuestions.length).fill(false);
+
+    examSubmitted = false;
 
     saveProgress("quiz");
 
@@ -145,13 +141,28 @@ function startQuiz(mode) {
     showQuestion();
 }
 
-function showQuestion() {
-    if (
-        currentIndex < 0 ||
-        currentIndex >= currentQuestions.length
-    ) {
-        return;
+function updateNavigation() {
+    const previousButton = document.getElementById("previous-btn");
+    const nextButton = document.getElementById("next-btn");
+    const submitButton = document.getElementById("submit-btn");
+
+    if (previousButton) {
+        previousButton.disabled = currentIndex === 0;
     }
+
+    const isLastQuestion = currentIndex === currentQuestions.length - 1;
+
+    if (nextButton) {
+        nextButton.style.display = isLastQuestion ? "none" : "";
+    }
+
+    if (submitButton) {
+        submitButton.style.display = isLastQuestion ? "" : "none";
+    }
+}
+
+function showQuestion() {
+    if (currentIndex < 0 || currentIndex >= currentQuestions.length) return;
 
     const question = currentQuestions[currentIndex];
 
@@ -159,27 +170,19 @@ function showQuestion() {
         `Question ${currentIndex + 1} / ${currentQuestions.length}`;
 
     document.getElementById("score-display").textContent =
-        `Score: ${score}`;
+        `Answered: ${answeredQuestions.filter(Boolean).length} / ${currentQuestions.length}`;
 
-    document.getElementById("question-text").textContent =
-        question.question;
+    document.getElementById("question-text").textContent = question.question;
 
     const progress = ((currentIndex + 1) / currentQuestions.length) * 100;
+    document.getElementById("progress-bar").style.width = progress + "%";
 
-    document.getElementById("progress-bar").style.width =
-        progress + "%";
-
-    const optionsContainer =
-        document.getElementById("options-container");
-
+    const optionsContainer = document.getElementById("options-container");
     optionsContainer.innerHTML = "";
 
     const feedback = document.getElementById("feedback");
     feedback.textContent = "";
     feedback.className = "";
-
-    const nextButton = document.getElementById("next-btn");
-    nextButton.disabled = true;
 
     question.options.forEach((option, index) => {
         const button = document.createElement("button");
@@ -187,132 +190,180 @@ function showQuestion() {
         button.textContent = option;
         button.classList.add("option-btn");
 
+        if (userAnswers[currentIndex] === index) {
+            button.classList.add("selected");
+            button.style.border = "3px solid #4c8bf5";
+        }
+
         button.onclick = () => selectAnswer(index);
 
         optionsContainer.appendChild(button);
     });
 
-    // Restore the answer and feedback if already answered
-    if (answered) {
-        const buttons = document.querySelectorAll("#options-container button");
-
-        const correctIndex = question.options.findIndex(option =>
-            option === question.answer
-        );
-
-        buttons.forEach((button, index) => {
-            button.disabled = true;
-
-            if (index === correctIndex) {
-                button.classList.add("correct");
-            }
-
-            if (
-                index === selectedAnswerIndex &&
-                index !== correctIndex
-            ) {
-                button.classList.add("wrong");
-            }
-        });
-
-        if (selectedAnswerIndex === correctIndex) {
-            feedback.textContent = "Correct!";
-            feedback.className = "correct-feedback";
-        } else {
-            feedback.textContent =
-                `Incorrect! Correct answer: ${question.answer}`;
-
-            feedback.className = "wrong-feedback";
-        }
-
-        nextButton.disabled = false;
-    }
+    updateNavigation();
 }
 
 function selectAnswer(selectedIndex) {
-    if (answered) return;
+    if (examSubmitted) return;
 
-    answered = true;
-    selectedAnswerIndex = selectedIndex;
+    userAnswers[currentIndex] = selectedIndex;
+    answeredQuestions[currentIndex] = true;
 
-    const question = currentQuestions[currentIndex];
     const buttons = document.querySelectorAll("#options-container button");
 
-    const selectedOption = question.options[selectedIndex];
-
-    const correctIndex = question.options.findIndex(option =>
-        option === question.answer
-    );
-
     buttons.forEach((button, index) => {
-        button.disabled = true;
+        button.classList.remove("selected");
+        button.style.border = "";
 
-        if (index === correctIndex) {
-            button.classList.add("correct");
-        }
-
-        if (index === selectedIndex && index !== correctIndex) {
-            button.classList.add("wrong");
+        if (index === selectedIndex) {
+            button.classList.add("selected");
+            button.style.border = "3px solid #4c8bf5";
         }
     });
 
-    const feedback = document.getElementById("feedback");
-
-    if (selectedOption === question.answer) {
-        score++;
-
-        feedback.textContent = "Correct!";
-        feedback.className = "correct-feedback";
-    } else {
-        feedback.textContent =
-            `Incorrect! Correct answer: ${question.answer}`;
-
-        feedback.className = "wrong-feedback";
-    }
-
     document.getElementById("score-display").textContent =
-        `Score: ${score}`;
+        `Answered: ${answeredQuestions.filter(Boolean).length} / ${currentQuestions.length}`;
 
-    document.getElementById("next-btn").disabled = false;
-
-    // Save immediately after answering
     saveProgress("quiz");
 }
 
 function nextQuestion() {
-    if (!answered) return;
+    if (examSubmitted) return;
+
+    if (currentIndex >= currentQuestions.length - 1) return;
 
     currentIndex++;
 
-    if (currentIndex >= currentQuestions.length) {
-        showResults();
-        return;
-    }
-
-    answered = false;
-    selectedAnswerIndex = null;
-
-    // Save immediately when moving to the next question
     saveProgress("quiz");
-
     showQuestion();
 }
 
-function showResults() {
-    // Save the final score and result screen
+function previousQuestion() {
+    if (examSubmitted) return;
+
+    if (currentIndex <= 0) return;
+
+    currentIndex--;
+
+    saveProgress("quiz");
+    showQuestion();
+}
+
+function submitExam() {
+    if (examSubmitted) return;
+
+    const unansweredCount = answeredQuestions.filter(answer => !answer).length;
+
+    if (unansweredCount > 0) {
+        const confirmSubmit = confirm(
+            `You have ${unansweredCount} unanswered question(s). Do you want to submit anyway?`
+        );
+
+        if (!confirmSubmit) return;
+    } else {
+        const confirmSubmit = confirm("Are you sure you want to submit your exam?");
+        if (!confirmSubmit) return;
+    }
+
+    calculateScore();
+
+    examSubmitted = true;
+
     saveProgress("result");
+
+    showResults();
+}
+
+function calculateScore() {
+    score = 0;
+
+    currentQuestions.forEach((question, index) => {
+        if (!answeredQuestions[index]) return;
+
+        const correctIndex = question.options.findIndex(
+            option => option === question.answer
+        );
+
+        if (userAnswers[index] === correctIndex) {
+            score++;
+        }
+    });
+}
+
+function showResults() {
+    calculateScore();
 
     hideAllScreens();
 
-    document.getElementById("result-screen").classList.remove("hidden");
+    const resultScreen = document.getElementById("result-screen");
+    resultScreen.classList.remove("hidden");
 
     document.getElementById("final-score").textContent =
         `${score} / ${currentQuestions.length}`;
 
-    const percentage = (score / currentQuestions.length) * 100;
+    const percentage = currentQuestions.length
+        ? (score / currentQuestions.length) * 100
+        : 0;
 
     document.getElementById("result-message").textContent =
         `Your score: ${percentage.toFixed(1)}%`;
+
+    showReview();
+}
+
+function showReview() {
+    const resultScreen = document.getElementById("result-screen");
+
+    let reviewContainer = document.getElementById("review-container");
+
+    if (!reviewContainer) {
+        reviewContainer = document.createElement("div");
+        reviewContainer.id = "review-container";
+        resultScreen.appendChild(reviewContainer);
+    }
+
+    reviewContainer.innerHTML = "<h2>Exam Review</h2>";
+
+    currentQuestions.forEach((question, index) => {
+        const correctIndex = question.options.findIndex(
+            option => option === question.answer
+        );
+
+        const selectedIndex = userAnswers[index];
+
+        const isCorrect =
+            answeredQuestions[index] && selectedIndex === correctIndex;
+
+        const reviewItem = document.createElement("div");
+
+        reviewItem.style.padding = "15px";
+        reviewItem.style.margin = "12px 0";
+        reviewItem.style.border = "1px solid #ccc";
+        reviewItem.style.borderRadius = "10px";
+
+        const questionTitle = document.createElement("h3");
+        questionTitle.textContent = `Question ${index + 1}: ${question.question}`;
+
+        const yourAnswer = document.createElement("p");
+
+        yourAnswer.textContent = answeredQuestions[index]
+            ? `Your answer: ${question.options[selectedIndex]}`
+            : "Your answer: Not answered";
+
+        const correctAnswer = document.createElement("p");
+        correctAnswer.textContent = `Correct answer: ${question.answer}`;
+
+        const status = document.createElement("p");
+        status.textContent = isCorrect ? "Correct" : "Incorrect";
+        status.style.fontWeight = "bold";
+
+        reviewItem.appendChild(questionTitle);
+        reviewItem.appendChild(yourAnswer);
+        reviewItem.appendChild(correctAnswer);
+        reviewItem.appendChild(status);
+
+        reviewContainer.appendChild(reviewItem);
+    });
 }
 
 function restartQuiz() {
@@ -328,6 +379,7 @@ function goHome() {
     clearProgress();
 
     hideAllScreens();
+
     document.getElementById("welcome-screen").classList.remove("hidden");
 }
 
@@ -350,9 +402,6 @@ function restoreProgress() {
         selectedSubject = progress.subject;
         selectedMode = progress.mode;
         currentIndex = progress.index;
-        score = progress.score;
-        answered = progress.answered;
-        selectedAnswerIndex = progress.selectedAnswerIndex;
 
         currentQuestions = buildQuestionList();
 
@@ -361,26 +410,43 @@ function restoreProgress() {
             return;
         }
 
-        // Validate the saved question position
-        if (progress.screen !== "result") {
-            if (
-                currentIndex < 0 ||
-                currentIndex >= currentQuestions.length
-            ) {
-                clearProgress();
-                return;
-            }
+        if (currentIndex < 0 || currentIndex >= currentQuestions.length) {
+            clearProgress();
+            return;
         }
 
-        // Restore the result screen
-        if (progress.screen === "result") {
-            hideAllScreens();
+        userAnswers = progress.userAnswers ||
+            new Array(currentQuestions.length).fill(null);
+
+        answeredQuestions = progress.answeredQuestions ||
+            new Array(currentQuestions.length).fill(false);
+
+        // Compatibility with the previous saved format
+        if (!progress.userAnswers && progress.answered) {
+            userAnswers[currentIndex] = progress.selectedAnswerIndex;
+            answeredQuestions[currentIndex] = true;
+        }
+
+        // Ensure saved arrays match the question count
+        if (userAnswers.length !== currentQuestions.length) {
+            userAnswers = new Array(currentQuestions.length).fill(null);
+        }
+
+        if (answeredQuestions.length !== currentQuestions.length) {
+            answeredQuestions = new Array(currentQuestions.length).fill(false);
+        }
+
+        examSubmitted = progress.examSubmitted || progress.screen === "result";
+
+        calculateScore();
+
+        if (examSubmitted) {
             showResults();
             return;
         }
 
-        // Restore the quiz screen
         hideAllScreens();
+
         document.getElementById("quiz-screen").classList.remove("hidden");
 
         showQuestion();
@@ -391,5 +457,4 @@ function restoreProgress() {
     }
 }
 
-// Restore after the page and its scripts have loaded
 window.addEventListener("load", restoreProgress);
