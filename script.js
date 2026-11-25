@@ -3,10 +3,13 @@ let currentQuestions = [];
 let currentIndex = 0;
 let score = 0;
 let answered = false;
+let selectedAnswerIndex = null;
 
 let selectedDepartment = "";
 let selectedSubject = "";
 let selectedMode = "";
+
+const SAVE_KEY = "nursingQuizProgress";
 
 const departments = {
     pediatric: {
@@ -22,6 +25,85 @@ const departments = {
         ]
     },
 };
+
+function saveProgress(screen = "quiz") {
+    const progress = {
+        department: selectedDepartment,
+        subject: selectedSubject,
+        mode: selectedMode,
+        index: currentIndex,
+        score: score,
+        answered: answered,
+        selectedAnswerIndex: selectedAnswerIndex,
+        screen: screen
+    };
+
+    localStorage.setItem(SAVE_KEY, JSON.stringify(progress));
+}
+
+function clearProgress() {
+    localStorage.removeItem(SAVE_KEY);
+}
+
+function restoreProgress() {
+    const saved = localStorage.getItem(SAVE_KEY);
+
+    if (!saved) return;
+
+    try {
+        const progress = JSON.parse(saved);
+
+        selectedDepartment = progress.department;
+        selectedSubject = progress.subject;
+        selectedMode = progress.mode;
+        currentIndex = progress.index;
+        score = progress.score;
+        answered = progress.answered;
+        selectedAnswerIndex = progress.selectedAnswerIndex;
+
+        let subjectBank = questionBank[selectedSubject];
+
+        if (!subjectBank && questionBank.mcq && questionBank.tf) {
+            subjectBank = questionBank;
+        }
+
+        if (!subjectBank) {
+            clearProgress();
+            return;
+        }
+
+        const mcqQuestions = subjectBank.mcq || [];
+        const tfQuestions = subjectBank.tf || [];
+
+        if (selectedMode === "mcq") {
+            currentQuestions = [...mcqQuestions];
+        } else if (selectedMode === "tf") {
+            currentQuestions = [...tfQuestions];
+        } else {
+            currentQuestions = [...mcqQuestions, ...tfQuestions];
+        }
+
+        if (
+            currentQuestions.length === 0 ||
+            currentIndex >= currentQuestions.length
+        ) {
+            clearProgress();
+            return;
+        }
+
+        hideAllScreens();
+
+        if (progress.screen === "result") {
+            showResults();
+        } else {
+            document.getElementById("quiz-screen").classList.remove("hidden");
+            showQuestion();
+        }
+
+    } catch (error) {
+        clearProgress();
+    }
+}
 
 function hideAllScreens() {
     document.querySelectorAll(".screen").forEach(screen => {
@@ -72,10 +154,8 @@ function selectSubject(subjectKey, subjectName) {
 function startQuiz(mode) {
     selectedMode = mode;
 
-    // Get the question bank for the selected subject
     let subjectBank = questionBank[selectedSubject];
 
-    // Temporary compatibility with the old question-bank structure
     if (!subjectBank && questionBank.mcq && questionBank.tf) {
         subjectBank = questionBank;
     }
@@ -104,6 +184,9 @@ function startQuiz(mode) {
     currentIndex = 0;
     score = 0;
     answered = false;
+    selectedAnswerIndex = null;
+
+    saveProgress();
 
     hideAllScreens();
     document.getElementById("quiz-screen").classList.remove("hidden");
@@ -112,8 +195,6 @@ function startQuiz(mode) {
 }
 
 function showQuestion() {
-    answered = false;
-
     const question = currentQuestions[currentIndex];
 
     document.getElementById("question-counter").textContent =
@@ -135,10 +216,12 @@ function showQuestion() {
 
     optionsContainer.innerHTML = "";
 
-    document.getElementById("feedback").textContent = "";
+    const feedback = document.getElementById("feedback");
+    feedback.textContent = "";
+    feedback.className = "";
 
     const nextButton = document.getElementById("next-btn");
-    nextButton.disabled = true;
+    nextButton.disabled = !answered;
 
     question.options.forEach((option, index) => {
         const button = document.createElement("button");
@@ -150,12 +233,49 @@ function showQuestion() {
 
         optionsContainer.appendChild(button);
     });
+
+    // Restore the previous answer if this question was already answered
+    if (answered) {
+        const buttons = document.querySelectorAll("#options-container button");
+
+        const correctIndex = question.options.findIndex(option =>
+            option === question.answer
+        );
+
+        buttons.forEach((button, index) => {
+            button.disabled = true;
+
+            if (index === correctIndex) {
+                button.classList.add("correct");
+            }
+
+            if (
+                index === selectedAnswerIndex &&
+                index !== correctIndex
+            ) {
+                button.classList.add("wrong");
+            }
+        });
+
+        if (selectedAnswerIndex === correctIndex) {
+            feedback.textContent = "Correct!";
+            feedback.className = "correct-feedback";
+        } else {
+            feedback.textContent =
+                `Incorrect! Correct answer: ${question.answer}`;
+
+            feedback.className = "wrong-feedback";
+        }
+
+        nextButton.disabled = false;
+    }
 }
 
 function selectAnswer(selectedIndex) {
     if (answered) return;
 
     answered = true;
+    selectedAnswerIndex = selectedIndex;
 
     const question = currentQuestions[currentIndex];
     const buttons = document.querySelectorAll("#options-container button");
@@ -196,6 +316,8 @@ function selectAnswer(selectedIndex) {
         `Score: ${score}`;
 
     document.getElementById("next-btn").disabled = false;
+
+    saveProgress();
 }
 
 function nextQuestion() {
@@ -204,6 +326,10 @@ function nextQuestion() {
     currentIndex++;
 
     if (currentIndex < currentQuestions.length) {
+        answered = false;
+        selectedAnswerIndex = null;
+
+        saveProgress();
         showQuestion();
     } else {
         showResults();
@@ -211,6 +337,8 @@ function nextQuestion() {
 }
 
 function showResults() {
+    saveProgress("result");
+
     hideAllScreens();
 
     document.getElementById("result-screen").classList.remove("hidden");
@@ -234,6 +362,12 @@ function goBack(screenId) {
 }
 
 function goHome() {
+    clearProgress();
+
     hideAllScreens();
     document.getElementById("welcome-screen").classList.remove("hidden");
 }
+
+// Automatically restore the saved quiz when the page loads
+restoreProgress();
+
