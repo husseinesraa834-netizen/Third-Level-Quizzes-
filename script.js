@@ -9,7 +9,7 @@ let selectedDepartment = "";
 let selectedSubject = "";
 let selectedMode = "";
 
-const SAVE_KEY = "nursingQuizProgress";
+const SAVE_KEY = "nursingQuizProgress_v2";
 
 const departments = {
     pediatric: {
@@ -38,71 +38,18 @@ function saveProgress(screen = "quiz") {
         screen: screen
     };
 
-    localStorage.setItem(SAVE_KEY, JSON.stringify(progress));
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(progress));
+    } catch (error) {
+        console.error("Could not save quiz progress:", error);
+    }
 }
 
 function clearProgress() {
-    localStorage.removeItem(SAVE_KEY);
-}
-
-function restoreProgress() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    
-alert(localStorage.getItem("nursingQuizProgress"));
-    if (!saved) return;
-
     try {
-        const progress = JSON.parse(saved);
-
-        selectedDepartment = progress.department;
-        selectedSubject = progress.subject;
-        selectedMode = progress.mode;
-        currentIndex = progress.index;
-        score = progress.score;
-        answered = progress.answered;
-        selectedAnswerIndex = progress.selectedAnswerIndex;
-
-        let subjectBank = questionBank[selectedSubject];
-
-        if (!subjectBank && questionBank.mcq && questionBank.tf) {
-            subjectBank = questionBank;
-        }
-
-        if (!subjectBank) {
-            clearProgress();
-            return;
-        }
-
-        const mcqQuestions = subjectBank.mcq || [];
-        const tfQuestions = subjectBank.tf || [];
-
-        if (selectedMode === "mcq") {
-            currentQuestions = [...mcqQuestions];
-        } else if (selectedMode === "tf") {
-            currentQuestions = [...tfQuestions];
-        } else {
-            currentQuestions = [...mcqQuestions, ...tfQuestions];
-        }
-
-        if (
-            currentQuestions.length === 0 ||
-            currentIndex >= currentQuestions.length
-        ) {
-            clearProgress();
-            return;
-        }
-
-        hideAllScreens();
-
-        if (progress.screen === "result") {
-            showResults();
-        } else {
-            document.getElementById("quiz-screen").classList.remove("hidden");
-            showQuestion();
-        }
-
+        localStorage.removeItem(SAVE_KEY);
     } catch (error) {
-        clearProgress();
+        console.error("Could not clear quiz progress:", error);
     }
 }
 
@@ -152,30 +99,33 @@ function selectSubject(subjectKey, subjectName) {
     document.getElementById("mode-screen").classList.remove("hidden");
 }
 
-function startQuiz(mode) {
-    selectedMode = mode;
-
+function buildQuestionList() {
     let subjectBank = questionBank[selectedSubject];
 
     if (!subjectBank && questionBank.mcq && questionBank.tf) {
         subjectBank = questionBank;
     }
 
-    if (!subjectBank) {
-        alert("Questions for this subject have not been added yet.");
-        return;
+    if (!subjectBank) return [];
+
+    const mcqQuestions = subjectBank.mcq || [];
+    const tfQuestions = subjectBank.tf || [];
+
+    if (selectedMode === "mcq") {
+        return [...mcqQuestions];
     }
 
-    let mcqQuestions = subjectBank.mcq || [];
-    let tfQuestions = subjectBank.tf || [];
-
-    if (mode === "mcq") {
-        currentQuestions = [...mcqQuestions];
-    } else if (mode === "tf") {
-        currentQuestions = [...tfQuestions];
-    } else {
-        currentQuestions = [...mcqQuestions, ...tfQuestions];
+    if (selectedMode === "tf") {
+        return [...tfQuestions];
     }
+
+    return [...mcqQuestions, ...tfQuestions];
+}
+
+function startQuiz(mode) {
+    selectedMode = mode;
+
+    currentQuestions = buildQuestionList();
 
     if (currentQuestions.length === 0) {
         alert("No questions available for this quiz yet.");
@@ -187,7 +137,7 @@ function startQuiz(mode) {
     answered = false;
     selectedAnswerIndex = null;
 
-    saveProgress();
+    saveProgress("quiz");
 
     hideAllScreens();
     document.getElementById("quiz-screen").classList.remove("hidden");
@@ -196,6 +146,13 @@ function startQuiz(mode) {
 }
 
 function showQuestion() {
+    if (
+        currentIndex < 0 ||
+        currentIndex >= currentQuestions.length
+    ) {
+        return;
+    }
+
     const question = currentQuestions[currentIndex];
 
     document.getElementById("question-counter").textContent =
@@ -222,7 +179,7 @@ function showQuestion() {
     feedback.className = "";
 
     const nextButton = document.getElementById("next-btn");
-    nextButton.disabled = !answered;
+    nextButton.disabled = true;
 
     question.options.forEach((option, index) => {
         const button = document.createElement("button");
@@ -235,7 +192,7 @@ function showQuestion() {
         optionsContainer.appendChild(button);
     });
 
-    // Restore the previous answer if this question was already answered
+    // Restore the answer and feedback if already answered
     if (answered) {
         const buttons = document.querySelectorAll("#options-container button");
 
@@ -318,7 +275,8 @@ function selectAnswer(selectedIndex) {
 
     document.getElementById("next-btn").disabled = false;
 
-    saveProgress();
+    // Save immediately after answering
+    saveProgress("quiz");
 }
 
 function nextQuestion() {
@@ -326,18 +284,22 @@ function nextQuestion() {
 
     currentIndex++;
 
-    if (currentIndex < currentQuestions.length) {
-        answered = false;
-        selectedAnswerIndex = null;
-
-        saveProgress();
-        showQuestion();
-    } else {
+    if (currentIndex >= currentQuestions.length) {
         showResults();
+        return;
     }
+
+    answered = false;
+    selectedAnswerIndex = null;
+
+    // Save immediately when moving to the next question
+    saveProgress("quiz");
+
+    showQuestion();
 }
 
 function showResults() {
+    // Save the final score and result screen
     saveProgress("result");
 
     hideAllScreens();
@@ -369,6 +331,65 @@ function goHome() {
     document.getElementById("welcome-screen").classList.remove("hidden");
 }
 
-// Automatically restore the saved quiz when the page loads
-window.addEventListener("load", restoreProgress);
+function restoreProgress() {
+    let saved;
 
+    try {
+        saved = localStorage.getItem(SAVE_KEY);
+    } catch (error) {
+        console.error("Could not read saved progress:", error);
+        return;
+    }
+
+    if (!saved) return;
+
+    try {
+        const progress = JSON.parse(saved);
+
+        selectedDepartment = progress.department;
+        selectedSubject = progress.subject;
+        selectedMode = progress.mode;
+        currentIndex = progress.index;
+        score = progress.score;
+        answered = progress.answered;
+        selectedAnswerIndex = progress.selectedAnswerIndex;
+
+        currentQuestions = buildQuestionList();
+
+        if (currentQuestions.length === 0) {
+            clearProgress();
+            return;
+        }
+
+        // Validate the saved question position
+        if (progress.screen !== "result") {
+            if (
+                currentIndex < 0 ||
+                currentIndex >= currentQuestions.length
+            ) {
+                clearProgress();
+                return;
+            }
+        }
+
+        // Restore the result screen
+        if (progress.screen === "result") {
+            hideAllScreens();
+            showResults();
+            return;
+        }
+
+        // Restore the quiz screen
+        hideAllScreens();
+        document.getElementById("quiz-screen").classList.remove("hidden");
+
+        showQuestion();
+
+    } catch (error) {
+        console.error("Could not restore quiz:", error);
+        clearProgress();
+    }
+}
+
+// Restore after the page and its scripts have loaded
+window.addEventListener("load", restoreProgress);
