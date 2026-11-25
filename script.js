@@ -47,7 +47,8 @@ function clearProgress() {
 
 function restoreProgress() {
     const saved = localStorage.getItem(SAVE_KEY);
-
+    
+alert(localStorage.getItem("nursingQuizProgress"));
     if (!saved) return;
 
     try {
