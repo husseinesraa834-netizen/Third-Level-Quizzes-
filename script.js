@@ -369,5 +369,5 @@ function goHome() {
 }
 
 // Automatically restore the saved quiz when the page loads
-restoreProgress();
+window.addEventListener("load", restoreProgress);
 
