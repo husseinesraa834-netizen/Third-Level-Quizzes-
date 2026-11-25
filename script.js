@@ -458,26 +458,11 @@ function restoreProgress() {
 }
 
 window.addEventListener("load", restoreProgress);
+
 function exitQuiz() {
     saveProgress("quiz");
 
     hideAllScreens();
 
-    const screenIds = [
-        "quiz-type-screen",
-        "quiz-mode-screen",
-        "mode-selection-screen",
-        "quiz-selection-screen"
-    ];
-
-    for (const id of screenIds) {
-        const screen = document.getElementById(id);
-
-        if (screen) {
-            screen.classList.remove("hidden");
-            return;
-        }
-    }
-
-    alert("Quiz selection screen was not found.");
+    document.getElementById("mode-screen").classList.remove("hidden");
 }
