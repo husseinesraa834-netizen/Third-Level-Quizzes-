@@ -169,8 +169,10 @@ function showQuestion() {
     document.getElementById("question-counter").textContent =
         `Question ${currentIndex + 1} / ${currentQuestions.length}`;
 
+    calculateScore();
+
     document.getElementById("score-display").textContent =
-        `Answered: ${answeredQuestions.filter(Boolean).length} / ${currentQuestions.length}`;
+        `Answered: ${answeredQuestions.filter(Boolean).length} / ${currentQuestions.length} | Score: ${score} / ${currentQuestions.length}`;
 
     document.getElementById("question-text").textContent = question.question;
 
@@ -183,6 +185,12 @@ function showQuestion() {
     const feedback = document.getElementById("feedback");
     feedback.textContent = "";
     feedback.className = "";
+    feedback.style.color = "";
+    feedback.style.fontWeight = "";
+
+    const correctIndex = question.options.findIndex(
+        option => option === question.answer
+    );
 
     question.options.forEach((option, index) => {
         const button = document.createElement("button");
@@ -192,6 +200,15 @@ function showQuestion() {
 
         if (userAnswers[currentIndex] === index) {
             button.classList.add("selected");
+        }
+
+        if (answeredQuestions[currentIndex]) {
+            if (index === correctIndex) {
+                button.style.border = "3px solid #16a34a";
+            } else if (index === userAnswers[currentIndex]) {
+                button.style.border = "3px solid #dc2626";
+            }
+        } else if (userAnswers[currentIndex] === index) {
             button.style.border = "3px solid #4c8bf5";
         }
 
@@ -199,6 +216,18 @@ function showQuestion() {
 
         optionsContainer.appendChild(button);
     });
+
+    if (answeredQuestions[currentIndex]) {
+        feedback.textContent = userAnswers[currentIndex] === correctIndex
+            ? "Correct Answer! ✓"
+            : `Wrong Answer! Correct answer: ${question.answer}`;
+
+        feedback.style.color = userAnswers[currentIndex] === correctIndex
+            ? "#16a34a"
+            : "#dc2626";
+
+        feedback.style.fontWeight = "bold";
+    }
 
     updateNavigation();
 }
@@ -209,7 +238,13 @@ function selectAnswer(selectedIndex) {
     userAnswers[currentIndex] = selectedIndex;
     answeredQuestions[currentIndex] = true;
 
+    const question = currentQuestions[currentIndex];
+    const correctIndex = question.options.findIndex(
+        option => option === question.answer
+    );
+
     const buttons = document.querySelectorAll("#options-container button");
+    const feedback = document.getElementById("feedback");
 
     buttons.forEach((button, index) => {
         button.classList.remove("selected");
@@ -217,12 +252,31 @@ function selectAnswer(selectedIndex) {
 
         if (index === selectedIndex) {
             button.classList.add("selected");
-            button.style.border = "3px solid #4c8bf5";
+
+            button.style.border = selectedIndex === correctIndex
+                ? "3px solid #16a34a"
+                : "3px solid #dc2626";
+        }
+
+        if (index === correctIndex) {
+            button.style.border = "3px solid #16a34a";
         }
     });
 
+    feedback.textContent = selectedIndex === correctIndex
+        ? "Correct Answer! ✓"
+        : `Wrong Answer! Correct answer: ${question.answer}`;
+
+    feedback.style.color = selectedIndex === correctIndex
+        ? "#16a34a"
+        : "#dc2626";
+
+    feedback.style.fontWeight = "bold";
+
+    calculateScore();
+
     document.getElementById("score-display").textContent =
-        `Answered: ${answeredQuestions.filter(Boolean).length} / ${currentQuestions.length}`;
+        `Answered: ${answeredQuestions.filter(Boolean).length} / ${currentQuestions.length} | Score: ${score} / ${currentQuestions.length}`;
 
     saveProgress("quiz");
 }
